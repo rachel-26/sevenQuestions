@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background-light: #f6f6f8;
+  --color-slate-500: #64748b;
+  --color-amber-500: #f59e0b;
+  --color-slate-900: #0f172a;
+  --color-border-subtle: #e2e8f0;
+  --color-background-dark: #121520;
+  --color-slate-400: #94a3b8;
+  --color-primary: #2563eb;
+  --color-success: #16a34a;
+
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
+
+  --spacing-stack-sm: 1rem;
+  --spacing-stack-md: 2rem;
+  --spacing-container-max: 1280px;
+  --spacing-sidebar-width: 256px;
+  --spacing-gutter: 2rem;
+
+  --font-label-bold: Inter, sans-serif;
+  --font-display-lg: Inter, sans-serif;
+  --font-micro-detail: Inter, sans-serif;
+  --font-body-sm: Inter, sans-serif;
+  --font-headline-md: Inter, sans-serif;
+  --font-label-caps: Inter, sans-serif;
+  --font-body-base: Inter, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Custom text sizes matching original config */
+  --text-label-bold: 12px;
+  --text-label-bold--line-height: 16px;
+  --text-label-bold--font-weight: 700;
+
+  --text-display-lg: 30px;
+  --text-display-lg--line-height: 36px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 900;
+
+  --text-micro-detail: 11px;
+  --text-micro-detail--line-height: 14px;
+  --text-micro-detail--font-weight: 400;
+
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-body-sm--font-weight: 400;
+
+  --text-headline-md: 18px;
+  --text-headline-md--line-height: 24px;
+  --text-headline-md--font-weight: 700;
+
+  --text-label-caps: 10px;
+  --text-label-caps--line-height: 12px;
+  --text-label-caps--letter-spacing: 0.05em;
+  --text-label-caps--font-weight: 700;
+
+  --text-body-base: 14px;
+  --text-body-base--line-height: 20px;
+  --text-body-base--font-weight: 400;
+}
+
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.mono-text {
+  font-family: 'JetBrains Mono', monospace;
+}
