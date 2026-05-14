@@ -6,13 +6,15 @@ export interface Analysis {
   chapter: number;
   verse: number;
   answers: {
-    who: string;
+    who: string[];
     why: string;
     when: string;
-    where: string;
-    which: string;
+    where: string[];
+    what: string[];
+    how_many?: number;
     how: string;
     actions: string[];
+    repetitions: string[];
   };
   updated_at: string;
   tags: string[];

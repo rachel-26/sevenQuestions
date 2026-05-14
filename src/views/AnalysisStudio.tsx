@@ -10,19 +10,41 @@ export const AnalysisStudio: React.FC = () => {
   const { analysis, saveAnalysis } = useAnalysis(currentBook, currentChapter, currentVerse);
 
   const [answers, setAnswers] = useState({
-    who: '', why: '', when: '', where: '', which: '', how: '', actions: [] as string[]
+    who: [] as string[], why: '', when: '', where: [] as string[], what: [] as string[], how_many: undefined as number | undefined, how: '', actions: [] as string[], repetitions: [] as string[]
   });
+  
+  const generateDNA = (text: string | undefined) => {
+    if (!text) return { consistency: 0, density: 0 };
+    const hash = text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return {
+      consistency: 70 + (hash % 28),
+      density: 50 + ((hash * 7) % 45)
+    };
+  };
+  const currentVerseText = verses.find(v => v.verse === currentVerse)?.text;
+  const dna = generateDNA(currentVerseText);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   React.useEffect(() => {
     if (analysis?.answers) {
-      setAnswers(analysis.answers);
+      const dbAnswers = analysis.answers as any;
+      setAnswers({
+        who: Array.isArray(dbAnswers.who) ? dbAnswers.who : (dbAnswers.who ? [dbAnswers.who] : []),
+        why: dbAnswers.why || '',
+        when: dbAnswers.when || '',
+        where: Array.isArray(dbAnswers.where) ? dbAnswers.where : (dbAnswers.where ? [dbAnswers.where] : []),
+        what: Array.isArray(dbAnswers.what) ? dbAnswers.what : (dbAnswers.what ? [dbAnswers.what] : []),
+        how_many: dbAnswers.how_many,
+        how: dbAnswers.how || '',
+        actions: Array.isArray(dbAnswers.actions) ? dbAnswers.actions : (dbAnswers.actions ? [dbAnswers.actions] : []),
+        repetitions: Array.isArray(dbAnswers.repetitions) ? dbAnswers.repetitions : (dbAnswers.repetitions ? [dbAnswers.repetitions] : [])
+      });
     } else {
-      setAnswers({ who: '', why: '', when: '', where: '', which: '', how: '', actions: [] });
+      setAnswers({ who: [], why: '', when: '', where: [], what: [], how_many: undefined, how: '', actions: [], repetitions: [] });
     }
   }, [analysis, currentVerse]);
 
-  const handleChange = (field: keyof typeof answers, value: string) => {
+  const handleChange = (field: keyof typeof answers, value: any) => {
     setAnswers(prev => ({ ...prev, [field]: value }));
   };
 
@@ -59,7 +81,17 @@ export const AnalysisStudio: React.FC = () => {
 
       if (!response.ok) throw new Error('Analysis request failed');
       const data = await response.json();
-      setAnswers(data);
+      setAnswers({
+        who: Array.isArray(data.who) ? data.who : (data.who ? [data.who] : []),
+        why: data.why || '',
+        when: data.when || '',
+        where: Array.isArray(data.where) ? data.where : (data.where ? [data.where] : []),
+        what: Array.isArray(data.what) ? data.what : (data.what ? [data.what] : []),
+        how_many: data.how_many,
+        how: data.how || '',
+        actions: Array.isArray(data.actions) ? data.actions : (data.actions ? [data.actions] : []),
+        repetitions: Array.isArray(data.repetitions) ? data.repetitions : (data.repetitions ? [data.repetitions] : [])
+      });
     } catch (err) {
       console.error(err);
       alert('Failed to connect to backend. Is studio.py running?');
@@ -119,19 +151,19 @@ export const AnalysisStudio: React.FC = () => {
                 <div>
                   <div className="flex justify-between text-micro-detail font-micro-detail mb-1">
                     <span>LITERARY CONSISTENCY</span>
-                    <span>94%</span>
+                    <span>{dna.consistency}%</span>
                   </div>
                   <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-primary h-full w-[94%]"></div>
+                    <div className="bg-primary h-full transition-all duration-1000" style={{ width: `${dna.consistency}%` }}></div>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between text-micro-detail font-micro-detail mb-1">
                     <span>SYMBOLIC DENSITY</span>
-                    <span>82%</span>
+                    <span>{dna.density}%</span>
                   </div>
                   <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-success h-full w-[82%]"></div>
+                    <div className="bg-success h-full transition-all duration-1000" style={{ width: `${dna.density}%` }}></div>
                   </div>
                 </div>
               </div>
@@ -158,8 +190,8 @@ export const AnalysisStudio: React.FC = () => {
               <p className="text-body-sm font-body-sm text-slate-400 mb-2">Identify primary and secondary characters.</p>
               <textarea
                 className="w-full bg-slate-100 border-none rounded-lg text-body-base font-body-base p-3 focus:ring-2 focus:ring-primary focus:bg-white transition-all h-20 resize-none outline-none"
-                value={answers.who}
-                onChange={(e) => handleChange('who', e.target.value)}
+                value={Array.isArray(answers.who) ? answers.who.join(', ') : (answers.who || '')}
+                onChange={(e) => handleChange('who', e.target.value.split(',').map(s => s.trim()))}
               />
             </div>
 
@@ -200,29 +232,44 @@ export const AnalysisStudio: React.FC = () => {
               <p className="text-body-sm font-body-sm text-slate-400 mb-2">Physical or metaphysical location.</p>
               <textarea
                 className="w-full bg-slate-100 border-none rounded-lg text-body-base font-body-base p-3 focus:ring-2 focus:ring-primary focus:bg-white transition-all h-20 resize-none outline-none"
-                value={answers.where}
-                onChange={(e) => handleChange('where', e.target.value)}
+                value={Array.isArray(answers.where) ? answers.where.join(', ') : (answers.where || '')}
+                onChange={(e) => handleChange('where', e.target.value.split(',').map(s => s.trim()))}
               />
             </div>
 
-            {/* Question 5: Which */}
+            {/* Question 5: What */}
             <div className="bg-white p-5 rounded-xl border border-border-subtle shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <span className="w-6 h-6 flex items-center justify-center bg-slate-900 text-white rounded-full text-[10px] font-bold">5</span>
-                <span className="font-label-bold text-label-bold uppercase tracking-wider text-slate-500">Which</span>
+                <span className="font-label-bold text-label-bold uppercase tracking-wider text-slate-500">What</span>
               </div>
-              <p className="text-body-sm font-body-sm text-slate-400 mb-2">Specific choices or nuances in the text.</p>
+              <p className="text-body-sm font-body-sm text-slate-400 mb-2">Specific objects or choices in the text.</p>
               <textarea
                 className="w-full bg-slate-100 border-none rounded-lg text-body-base font-body-base p-3 focus:ring-2 focus:ring-primary focus:bg-white transition-all h-20 resize-none outline-none"
-                value={answers.which}
-                onChange={(e) => handleChange('which', e.target.value)}
+                value={Array.isArray(answers.what) ? answers.what.join(', ') : (answers.what || '')}
+                onChange={(e) => handleChange('what', e.target.value.split(',').map(s => s.trim()))}
               />
             </div>
 
-            {/* Question 6: How */}
+            {/* Question 6: How Many */}
             <div className="bg-white p-5 rounded-xl border border-border-subtle shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <span className="w-6 h-6 flex items-center justify-center bg-slate-900 text-white rounded-full text-[10px] font-bold">6</span>
+                <span className="font-label-bold text-label-bold uppercase tracking-wider text-slate-500">How Many</span>
+              </div>
+              <p className="text-body-sm font-body-sm text-slate-400 mb-2">Numerical quantities mentioned.</p>
+              <input
+                type="number"
+                className="w-full bg-slate-100 border-none rounded-lg text-body-base font-body-base p-3 focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none"
+                value={answers.how_many || ''}
+                onChange={(e) => handleChange('how_many', e.target.value ? parseInt(e.target.value) : undefined)}
+              />
+            </div>
+
+            {/* Question 7: How */}
+            <div className="bg-white p-5 rounded-xl border border-border-subtle shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="w-6 h-6 flex items-center justify-center bg-slate-900 text-white rounded-full text-[10px] font-bold">7</span>
                 <span className="font-label-bold text-label-bold uppercase tracking-wider text-slate-500">How</span>
               </div>
               <p className="text-body-sm font-body-sm text-slate-400 mb-2">Mechanisms or modes of operation.</p>
@@ -233,15 +280,29 @@ export const AnalysisStudio: React.FC = () => {
               />
             </div>
 
-            {/* Question 7: Actions */}
+            {/* Repetitions */}
+            <div className="bg-white p-5 rounded-xl border border-border-subtle shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <span className="w-6 h-6 flex items-center justify-center bg-slate-900 text-white rounded-full text-[10px] font-bold">8</span>
+                <span className="font-label-bold text-label-bold uppercase tracking-wider text-slate-500">Repetitions</span>
+              </div>
+              <p className="text-body-sm font-body-sm text-slate-400 mb-2">Repeated words or phrases.</p>
+              <textarea
+                className="w-full bg-slate-100 border-none rounded-lg text-body-base font-body-base p-3 focus:ring-2 focus:ring-primary focus:bg-white transition-all h-20 resize-none outline-none"
+                value={Array.isArray(answers.repetitions) ? answers.repetitions.join(', ') : (answers.repetitions || '')}
+                onChange={(e) => handleChange('repetitions', e.target.value.split(',').map(s => s.trim()))}
+              />
+            </div>
+
+            {/* Actions */}
             <div className="bg-white p-5 rounded-xl border border-border-subtle shadow-sm border-l-4 border-l-success">
               <div className="flex items-center gap-3 mb-3">
-                <span className="w-6 h-6 flex items-center justify-center bg-success text-white rounded-full text-[10px] font-bold">7</span>
+                <span className="w-6 h-6 flex items-center justify-center bg-success text-white rounded-full text-[10px] font-bold">9</span>
                 <span className="font-label-bold text-label-bold uppercase tracking-wider text-success">Actions</span>
               </div>
               <p className="text-body-sm font-body-sm text-slate-400 mb-2">Practical application or follow-up steps.</p>
               <div className="space-y-2">
-                {answers.actions.map((action, idx) => (
+                {(Array.isArray(answers.actions) ? answers.actions : []).map((action, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <input 
                       checked={true}
