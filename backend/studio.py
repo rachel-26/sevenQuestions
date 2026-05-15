@@ -158,49 +158,71 @@ async def call_openai(prompt: str) -> Dict[str, Any]:
         content = result["choices"][0]["message"]["content"]
         return json.loads(content)
 
-async def call_local_rules(request: AnalyzeRequest) -> Dict[str, Any]:
-    """Rule-based fallback when no LLM is available - does real text analysis"""
-    verse_text = request.text.lower()
-    words = verse_text.split()
+nlp_qa_pipeline = None
+
+def get_qa_pipeline():
+    global nlp_qa_pipeline
+    if nlp_qa_pipeline is None:
+        from transformers import pipeline
+        print("Loading local NLP model (this may take a moment)...")
+        nlp_qa_pipeline = pipeline("question-answering", model="distilbert-base-cased-distilled-squad")
+    return nlp_qa_pipeline
+
+async def call_local_nlp(request: AnalyzeRequest) -> Dict[str, Any]:
+    """Uses a local HuggingFace NLP pipeline to extract semantic roles from the verse"""
+    qa = get_qa_pipeline()
+    context = request.text
     
-    # Extract named entities using simple heuristics
+    # We ask the model specific questions
+    questions = {
+        "who": "Who is the primary person or group mentioned?",
+        "what": "What specific object, action, or choice is mentioned?",
+        "when": "When did this happen?",
+        "where": "Where is the location?",
+        "why": "What is the reason or purpose?",
+        "how": "How did this happen or in what manner?"
+    }
+    
+    answers = {}
+    for key, question in questions.items():
+        try:
+            result = qa(question=question, context=context)
+            # Thresholding to ignore very low confidence answers
+            if result['score'] > 0.05:
+                answers[key] = result['answer']
+            else:
+                answers[key] = ""
+        except Exception as e:
+            print(f"QA Error for {key}: {e}")
+            answers[key] = ""
+            
+    # For actions, we use a specific question
+    try:
+        action_res = qa(question="What action is being performed?", context=context)
+        actions = [action_res['answer']] if action_res['score'] > 0.05 else []
+    except:
+        actions = []
+        
+    # For repetitions and how_many, deterministic logic works best
     import re
-    
-    # Find capitalized words (potential names/places)
-    capitalized = re.findall(r'\b([A-Z][a-z]+)\b', request.text)
-    
-    time_matches = re.findall(r'\b(day|night|morning|evening|week|month|year|\d+th|\w+ day)\b', verse_text)
-    
-    # Count repetitions
+    words = context.lower().split()
     from collections import Counter
     word_counts = Counter([w.strip('.,!?;:') for w in words if len(w) > 2])
-    repetitions = [word for word, count in word_counts.items() if count >= 2 and word not in ['the', 'and', 'for', 'but', 'so', 'then']]
+    repetitions = [word for word, count in word_counts.items() if count >= 2 and word not in ['the', 'and', 'for', 'but', 'so', 'then', 'with', 'that', 'this']]
     
-    # Extract numbers
-    numbers = re.findall(r'\b(\d+)\b', verse_text)
-    number_words = re.findall(r'\b(one|two|three|four|five|six|seven|eight|nine|ten)\b', verse_text)
+    numbers = re.findall(r'\b(\d+)\b', context.lower())
+    number_words = re.findall(r'\b(one|two|three|four|five|six|seven|eight|nine|ten)\b', context.lower())
     how_many = int(numbers[0]) if numbers else (len(number_words) if number_words else 0)
     
-    # Extract actions (verbs - approximate by looking for common verb endings)
-    common_verbs = ['said', 'went', 'came', 'saw', 'heard', 'spoke', 'walked', 'ran', 'stood', 'sat', 'ate', 'drank', 
-                    'gave', 'took', 'made', 'built', 'destroyed', 'blessed', 'cursed', 'loved', 'hated', 'commanded', 
-                    'asked', 'answered', 'called', 'cried', 'shouted', 'whispered', 'thought', 'knew', 'believed']
-    actions = [word for word in words if word.rstrip(',.') in common_verbs]
-    
-    # Basic location indicators
-    location_keywords = ['mount', 'mountain', 'valley', 'river', 'sea', 'desert', 'wilderness', 'city', 'town', 'village',
-                         'house', 'temple', 'tabernacle', 'heaven', 'earth', 'egypt', 'israel', 'judah', 'jerusalem']
-    where = [word for word in capitalized if any(loc in word.lower() for loc in location_keywords)]
-    
     return {
-        "who": capitalized[:3] if capitalized else [],
-        "why": "",
-        "when": time_matches[0] if time_matches else "",
-        "where": where if where else [],
-        "what": [w for w in words if w.startswith('the') or w.startswith('this') or w.startswith('that')][:3],
+        "who": [answers["who"]] if answers["who"] else [],
+        "why": answers["why"],
+        "when": answers["when"],
+        "where": [answers["where"]] if answers["where"] else [],
+        "what": [answers["what"]] if answers["what"] else [],
         "how_many": how_many if how_many > 0 else None,
-        "how": "",
-        "actions": actions if actions else [],
+        "how": answers["how"],
+        "actions": actions,
         "repetitions": repetitions if repetitions else []
     }
 
@@ -219,12 +241,12 @@ async def analyze_scripture(request: AnalyzeRequest):
             try:
                 result = await call_ollama(prompt)
             except Exception as e:
-                print(f"Ollama failed: {e}, falling back to rule-based")
-                result = await call_local_rules(request)
+                print(f"Ollama failed: {e}, falling back to local NLP model")
+                result = await call_local_nlp(request)
         elif MODEL_PROVIDER == "openai":
             result = await call_openai(prompt)
         else:  # mock or fallback
-            result = await call_local_rules(request)
+            result = await call_local_nlp(request)
         
         # Ensure all required fields exist with defaults
         response = AnalyzeResponse(
